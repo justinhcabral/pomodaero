@@ -19,7 +19,7 @@ m = -5.339286  # Slope
 b = 20.294821  # Intercept
 
 # Conversion factor for EC calculation
-CONVERSION_FACTOR = 0.5  # EC (μS/cm) = TDS (ppm) / 0.5
+CONVERSION_FACTOR = 0.5  # EC (μS/cm) = TDS (ppm) / 0.5, best for distilled water.
 
 def read_tds():
     """
