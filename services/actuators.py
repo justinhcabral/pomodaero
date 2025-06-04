@@ -8,23 +8,26 @@ import time
 # If gpiozero is not available, it runs in mock mode.
 # If running on a Raspberry Pi, it will use the GPIO pins defined in PUMP_PINS.
 try:
-    from gpiozero import OutputDevice
+    import RPi.GPIO as GPIO
     ON_PI = True
 except (ImportError, RuntimeError):
     ON_PI = False
-    print("[WARN] gpiozero not available. Running in mock mode")
+    print("[WARN] RPi.GPIO not available. Running in mock mode")
 
-# Dictionary to hold pump OutputDevices or mocks
+# Dictionary to hold pump pin numbers
 pumps = {}
 
 # Setup
 if ON_PI:
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
     for pump_name, pin in PUMP_PINS.items():
-        pumps[pump_name] = OutputDevice(pin, active_high = True, initial_value=False)
-    print("[ACTUATORS] Initialized gpiozero OutputDevices")
+        GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)
+        pumps[pump_name] = pin
+    print("[ACTUATORS] Initialized RPi.GPIO pins for pumps")
 else:
     for pump_name in PUMP_PINS:
-        pumps[pump_name] = None #Placeholder for mock
+        pumps[pump_name] = None # Placeholder for mock
     print("[MOCK] Pumps initialized as mock devices.")
 
 def activate_pump(pump_name: str, duration: float = 5.0):
@@ -32,14 +35,17 @@ def activate_pump(pump_name: str, duration: float = 5.0):
         raise ValueError(f"[ERROR] Unknown pump: {pump_name}")
     
     if ON_PI:
-        pump = pumps[pump_name]
-        pump.on()
-        print(f"[ACTUATOR] Pump {pump_name}' ON")
+        pin = pumps[pump_name]
+        GPIO.output(pin, GPIO.HIGH)
+        print(f"[ACTUATOR] Pump '{pump_name}' ON")
         time.sleep(duration)
-        pump.off()
-        print(f"[Actuator] Pump '{pump_name}' OFF")
+        GPIO.output(pin, GPIO.LOW)
+        print(f"[ACTUATOR] Pump '{pump_name}' OFF")
     else:
         print(f"[MOCK] Simulating pump '{pump_name}' for {duration}s")
         time.sleep(duration)
 
-# our function for activating the peristaltic pumps and the diaphragm pump will be different. the operation of the misting pump will be dependent on the growth stage and the 
+def cleanup():
+    if ON_PI:
+        GPIO.cleanup()
+        print("[ACTUATORS] Cleaned up GPIO pins")
