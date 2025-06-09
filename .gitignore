@@ -1,1 +1,5 @@
 /venv/
+*.jpg
+/services/runs/
+/services/tomato-stage-detection-1
+*.pyc

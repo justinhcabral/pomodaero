@@ -27,6 +27,7 @@ GPIO.setmode(GPIO.BCM)
 
 # All pump pins
 pumps = [23, 24, 25, 16, 20, 21]
+# 23, 24, 25, 16, 20, 21 pump pin order
 
 # Setup all pump pins as outputs and turn them OFF (HIGH = OFF for active-LOW relay)
 for pump in pumps:
