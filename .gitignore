@@ -3,3 +3,5 @@
 /services/runs/
 /services/tomato-stage-detection-1
 *.pyc
+__pycache__/
+*.py[cod]

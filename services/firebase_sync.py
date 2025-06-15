@@ -9,6 +9,8 @@ from datetime import datetime
 import pytz
 from sensors import read_tds, read_ph, read_dht11  # Import functions from sensors.py
 
+# TODO : firebase_sync.py supports listen_for_start_signal(), get_current_stage(), wait_for_stage_confirmation(), and sync_data() with the app.
+
 # Firebase configuration (using your project details)
 FIREBASE_CONFIG = {
     "apiKey": "AIzaSyDv6v4JDHyYnBjEu6d1IJCH9aaIG3597SM",
@@ -369,6 +371,78 @@ def save_environmental_data_to_firebase(email, data):
         
     except Exception as error:
         print(f"Error saving environmental data: {error}")
+
+def listen_for_start_signal():
+    """Check Firebase for a start signal from the mobile app."""
+    try:
+        project_id = FIREBASE_CONFIG["projectId"]
+        url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/users/ivanilla.ivanilla@gmail.com/start"
+        params = {"key": FIREBASE_CONFIG["apiKey"]}
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            start_flag = data.get('fields', {}).get('start', {}).get('booleanValue', False)
+            if start_flag:
+                patch_data = {"fields": {"start": {"booleanValue": False}}}
+                requests.patch(url, json=patch_data, params=params)
+                logger.info("Start signal received from Firebase")
+                return True
+        return False
+    except Exception as e:
+        logger.error(f"Error checking start signal: {e}")
+        return False
+
+def get_current_stage():
+    """Retrieve the current growth stage from Firebase."""
+    try:
+        project_id = FIREBASE_CONFIG["projectId"]
+        url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/users/ivanilla.ivanilla@gmail.com/currentStage"
+        params = {"key": FIREBASE_CONFIG["apiKey"]}
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            stage = data.get('fields', {}).get('stage', {}).get('integerValue')
+            return int(stage) if stage else 1  # Default to stage 1 if not set
+        return 1
+    except Exception as e:
+        logger.error(f"Error getting current stage: {e}")
+        return 1
+
+def wait_for_stage_confirmation(current_stage):
+    """Wait for mobile app confirmation of a new growth stage."""
+    try:
+        project_id = FIREBASE_CONFIG["projectId"]
+        url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/users/ivanilla.ivanilla@gmail.com/currentStage"
+        params = {"key": FIREBASE_CONFIG["apiKey"]}
+        while True:
+            response = requests.get(url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                new_stage = data.get('fields', {}).get('stage', {}).get('integerValue')
+                if new_stage and int(new_stage) != current_stage:
+                    logger.info(f"Stage confirmed: {new_stage}")
+                    return int(new_stage)
+            time.sleep(5)  # Poll every 5 seconds
+    except Exception as e:
+        logger.error(f"Error waiting for stage confirmation: {e}")
+        return current_stage
+
+def sync_data(data):
+    """Sync data (e.g., stage change) to Firebase."""
+    try:
+        project_id = FIREBASE_CONFIG["projectId"]
+        url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/users/ivanilla.ivanilla@gmail.com/status"
+        params = {"key": FIREBASE_CONFIG["apiKey"]}
+        firebase_data = {"fields": {
+            "stage_change": {"booleanValue": data.get('stage_change', False)},
+            "new_stage": {"integerValue": str(data.get('new_stage', 1))},
+            "image": {"stringValue": data.get('image', '')}
+        }}
+        response = requests.patch(url, json=firebase_data, params=params)
+        if response.status_code != 200:
+            logger.error(f"Failed to sync data: {response.text}")
+    except Exception as e:
+        logger.error(f"Error syncing data: {e}")
 
 def main():
     """

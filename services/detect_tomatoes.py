@@ -134,11 +134,19 @@ def run_onnx_model(model_path, image_path, img_size=320):
 
         # Store original dimensions for scaling
         orig_h, orig_w = img.shape[:2]
+# '''
+#     original implementation
+#         # Preprocess image
+#         img_resized = cv2.resize(img, (img_size, img_size))
+#         img_normalized = img_resized.transpose(2, 0, 1).astype(np.float32) / 255.0
+#         img_input = np.expand_dims(img_normalized, axis=0)
+# '''
 
         # Preprocess image
-        img_resized = cv2.resize(img, (img_size, img_size))
-        img_normalized = img_resized.transpose(2, 0, 1).astype(np.float32) / 255.0
-        img_input = np.expand_dims(img_normalized, axis=0)
+        img_resized = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+        img_resized = cv2.resize(img_resized, (320, 320), interpolation=cv2.INTER_AREA)  # Resize to 320x320
+        img_normalized = img_resized.transpose(2, 0, 1).astype(np.float32) / 255.0  # Transpose to CHW and normalize
+        img_input = np.expand_dims(img_normalized, axis=0)  # Add batch dimension
 
         # Run inference
         outputs = session.run(None, {session.get_inputs()[0].name: img_input})[0]
